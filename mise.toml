@@ -1,0 +1,78 @@
+min_version = '2026.9.12'
+
+[tools]
+rust = 'stable'
+
+# ─── Test ─────────────────────────────────────────────────────────────
+
+[tasks.test]
+alias = 't'
+description = 'Run tests, including doc examples (optionally pass a filter, e.g.: mise run test my_test)'
+env = { RUST_BACKTRACE = '1' }
+usage = 'arg "[filter]" help="Test name filter"'
+run = 'cargo test --workspace{% if usage.filter %} {{ usage.filter }}{% endif %}'
+
+# ─── Check ────────────────────────────────────────────────────────────
+
+[tasks.check]
+alias = 'c'
+description = 'Apply autofixes, then check every crate and target'
+depends = ['fix']
+run = 'cargo check --workspace --all-targets'
+
+[tasks.correctness]
+alias = 'clippy'
+description = 'Pedantically check all code'
+run = 'cargo clippy --workspace --all-targets -- -W clippy::pedantic'
+
+[tasks.doc]
+description = 'Build the docs and open them'
+run = 'cargo doc --workspace --no-deps --open'
+
+# ─── Format ───────────────────────────────────────────────────────────
+# fmt only formats. fix applies lint autofixes and then formats, so it's a superset of fmt.
+
+[tasks.fmt]
+alias = 'f'
+description = 'Format all code: cargo fmt'
+run = 'cargo fmt --all'
+
+[tasks.fix]
+alias = 'x'
+description = 'Apply rust compiler and clippy autofixes, then cargo fmt'
+run = [
+  'cargo fix --workspace --all-targets --allow-dirty --allow-no-vcs --allow-staged',
+  'cargo clippy --workspace --all-targets --fix --allow-dirty --allow-no-vcs --allow-staged',
+  'cargo fmt --all',
+]
+
+# ─── Clean ────────────────────────────────────────────────────────────
+
+[tasks.clean]
+description = 'Clean cargo build artifacts'
+run = 'cargo clean'
+
+# ─── Upgrade ──────────────────────────────────────────────────────────
+
+# Runs before any `cargo install` of a moving tool: new releases routinely require the newest stable rustc.
+[tasks.'rust:update']
+description = 'Update the stable Rust toolchain'
+run = 'rustup update stable'
+
+[tasks.update]
+description = 'Update Cargo.toml deps (non-breaking) and Cargo.lock'
+depends = ['rust:update']
+run = [
+  'cargo install cargo-edit',
+  'cargo upgrade',
+  'cargo update',
+]
+
+[tasks.upgrade]
+description = 'Upgrade Cargo.toml deps (breaking/latest) and Cargo.lock'
+depends = ['rust:update']
+run = [
+  'cargo install cargo-edit',
+  'cargo upgrade --incompatible',
+  'cargo update',
+]
